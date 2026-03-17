@@ -104,115 +104,193 @@ const initialProducts = [
   { productId: "P100", productName: "Ring Video Doorbell 4", pricePerUnit: 200, remainedQuantity: 25 },
 ];
 
+
 export default function SellerProductPage() {
   const [products, setProducts] = useState(() => {
-    // Load from localStorage if exists
     const saved = localStorage.getItem("products");
     return saved ? JSON.parse(saved) : initialProducts;
   });
 
-  // Save to localStorage on every change
+  const [editingIndex, setEditingIndex] = useState(null);
+
+  // 🔥 FILTER STATES
+  const [searchName, setSearchName] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+
+  const [newProduct, setNewProduct] = useState({
+    productId: "",
+    productName: "",
+    pricePerUnit: "",
+    remainedQuantity: "",
+  });
+
   useEffect(() => {
     localStorage.setItem("products", JSON.stringify(products));
   }, [products]);
 
-  // Handle input changes
   const handleChange = (index, field, value) => {
     const updated = [...products];
     updated[index][field] =
-      field === "pricePerUnit" || field === "remainedQuantity" ? Number(value) : value;
+      field === "pricePerUnit" || field === "remainedQuantity"
+        ? Number(value)
+        : value;
     setProducts(updated);
   };
 
-  // Save single product (here just alert for demo)
-  const saveProduct = (index) => {
-    alert(`Product ${products[index].productId} saved!`);
-    // In a real app, you would call a backend API here
+  const handleNewChange = (field, value) => {
+    setNewProduct({
+      ...newProduct,
+      [field]:
+        field === "pricePerUnit" || field === "remainedQuantity"
+          ? Number(value)
+          : value,
+    });
   };
 
-  // Delete product row
-  const deleteProduct = (index) => {
-    const empty = Object.values(products[index]).every(
-      (val) => val === "" || val === 0
-    );
-    if (!empty) {
-      alert("Cannot delete row with data! Clear first.");
+  const addProduct = () => {
+    if (!newProduct.productId || !newProduct.productName) {
+      alert("Fill all fields!");
       return;
     }
-    const updated = [...products];
-    updated.splice(index, 1);
-    setProducts(updated);
+
+    const exists = products.some(p => p.productId === newProduct.productId);
+    if (exists) {
+      alert("Product ID already exists!");
+      return;
+    }
+
+    setProducts([...products, newProduct]);
+
+    setNewProduct({
+      productId: "",
+      productName: "",
+      pricePerUnit: "",
+      remainedQuantity: "",
+    });
   };
+
+  const editRow = (index) => setEditingIndex(index);
+
+  const updateRow = (index) => {
+    setEditingIndex(null);
+    alert("Updated!");
+  };
+
+  const deleteProduct = (index) => {
+    if (window.confirm("Delete this product?")) {
+      const updated = [...products];
+      updated.splice(index, 1);
+      setProducts(updated);
+    }
+  };
+
+  // 🔥 FILTER LOGIC
+  const filteredProducts = products.filter((p) => {
+    const nameMatch = p.productName
+      .toLowerCase()
+      .includes(searchName.toLowerCase());
+
+    const minMatch = minPrice === "" || p.pricePerUnit >= Number(minPrice);
+    const maxMatch = maxPrice === "" || p.pricePerUnit <= Number(maxPrice);
+
+    return nameMatch && minMatch && maxMatch;
+  });
 
   return (
     <div style={{ padding: "20px" }}>
       <h2>Seller Product Management</h2>
 
+      {/* 🔥 FILTER SECTION */}
+      <div style={{ marginBottom: "15px", border: "1px solid #ccc", padding: "10px" }}>
+        <h3>Filter Products</h3>
+
+        <input
+          placeholder="Search by Name"
+          value={searchName}
+          onChange={(e) => setSearchName(e.target.value)}
+          style={{ marginRight: "10px" }}
+        />
+
+        <input
+          type="number"
+          placeholder="Min Price"
+          value={minPrice}
+          onChange={(e) => setMinPrice(e.target.value)}
+          style={{ marginRight: "10px" }}
+        />
+
+        <input
+          type="number"
+          placeholder="Max Price"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+        />
+      </div>
+
+      {/* 🔥 ADD PRODUCT */}
+      <div style={{ marginBottom: "20px" }}>
+        <h3>Add Product</h3>
+        <input placeholder="ID" value={newProduct.productId}
+          onChange={(e) => handleNewChange("productId", e.target.value)} />
+        <input placeholder="Name" value={newProduct.productName}
+          onChange={(e) => handleNewChange("productName", e.target.value)} />
+        <input type="number" placeholder="Price"
+          value={newProduct.pricePerUnit}
+          onChange={(e) => handleNewChange("pricePerUnit", e.target.value)} />
+        <input type="number" placeholder="Qty"
+          value={newProduct.remainedQuantity}
+          onChange={(e) => handleNewChange("remainedQuantity", e.target.value)} />
+        <button onClick={addProduct}>Add</button>
+      </div>
+
+      {/* 🔥 TABLE */}
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["Product ID", "Product Name", "Price Per Unit", "Remained Quantity", "Action", "Delete"].map(
-              (h) => (
-                <th
-                  key={h}
-                  style={{ border: "1px solid #000", padding: "6px", minWidth: "120px" }}
-                >
-                  {h}
-                </th>
-              )
-            )}
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Action</th>
+            <th>Delete</th>
           </tr>
         </thead>
 
         <tbody>
-          {products.map((prod, i) => (
+          {filteredProducts.map((prod, i) => (
             <tr key={prod.productId}>
-              <td style={{ border: "1px solid #000", padding: "6px" }}>{prod.productId}</td>
-              <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <input
-                  type="text"
-                  value={prod.productName}
-                  onChange={(e) => handleChange(i, "productName", e.target.value)}
-                  style={{ width: "100%" }}
-                />
+              <td>
+                <input value={prod.productId}
+                  readOnly={editingIndex !== i}
+                  onChange={(e) => handleChange(i, "productId", e.target.value)} />
               </td>
-              <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <input
-                  type="number"
-                  value={prod.pricePerUnit}
-                  onChange={(e) => handleChange(i, "pricePerUnit", e.target.value)}
-                  style={{ width: "100%" }}
-                />
+              <td>
+                <input value={prod.productName}
+                  readOnly={editingIndex !== i}
+                  onChange={(e) => handleChange(i, "productName", e.target.value)} />
               </td>
-              <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <input
-                  type="number"
-                  value={prod.remainedQuantity}
-                  onChange={(e) => handleChange(i, "remainedQuantity", e.target.value)}
-                  style={{ width: "100%" }}
-                />
+              <td>
+                <input type="number" value={prod.pricePerUnit}
+                  readOnly={editingIndex !== i}
+                  onChange={(e) => handleChange(i, "pricePerUnit", e.target.value)} />
               </td>
-              <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <button onClick={() => saveProduct(i)}>Save</button>
+              <td>
+                <input type="number" value={prod.remainedQuantity}
+                  readOnly={editingIndex !== i}
+                  onChange={(e) => handleChange(i, "remainedQuantity", e.target.value)} />
               </td>
-              <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <button
-                  onClick={() => deleteProduct(i)}
-                  disabled={
-                    !Object.values(prod).every((val) => val === "" || val === 0)
-                  }
-                  style={{
-                    backgroundColor: Object.values(prod).every((val) => val === "" || val === 0)
-                      ? "#f00"
-                      : "#ccc",
-                    color: "#fff",
-                    cursor: Object.values(prod).every((val) => val === "" || val === 0)
-                      ? "pointer"
-                      : "not-allowed",
-                  }}
-                >
-                  Delete
-                </button>
+
+              <td>
+                {editingIndex === i ? (
+                  <button onClick={() => updateRow(i)}>Update</button>
+                ) : (
+                  <button onClick={() => editRow(i)}>Edit</button>
+                )}
+              </td>
+
+              <td>
+                <button onClick={() => deleteProduct(i)}>Delete</button>
               </td>
             </tr>
           ))}
