@@ -103,6 +103,21 @@ const productDB = [
   { productId: "P099", productName: "Google Nest Thermostat", pricePerUnit: 250, remainedQuantity: 30 },
   { productId: "P100", productName: "Ring Video Doorbell 4", pricePerUnit: 200, remainedQuantity: 25 },
 ];
+
+// Seller database
+const sellerDB = [
+  { sellerId: "S001", sellerName: "John Doe" },
+  { sellerId: "S002", sellerName: "Jane Smith" },
+  { sellerId: "S003", sellerName: "Alice Johnson" },
+  { sellerId: "S004", sellerName: "Bob Williams" },
+  { sellerId: "S005", sellerName: "Michael Brown" },
+  { sellerId: "S006", sellerName: "Emily Davis" },
+  { sellerId: "S007", sellerName: "David Wilson" },
+  { sellerId: "S008", sellerName: "Sophia Martinez" },
+  { sellerId: "S009", sellerName: "James Anderson" },
+  { sellerId: "S010", sellerName: "Olivia Thomas" },
+];
+
 export default function SalesOrderTable() {
   const [rows, setRows] = useState(() => {
     const storedRows = JSON.parse(localStorage.getItem("salesRows"));
@@ -113,7 +128,7 @@ export default function SalesOrderTable() {
             orderId: "",
             customerName: "",
             customerContact: "",
-            sellerId: "",           // <-- New Seller ID field
+            sellerId: "",
             productName: "",
             productId: "",
             sellQuantity: 0,
@@ -138,7 +153,7 @@ export default function SalesOrderTable() {
         orderId: "",
         customerName: "",
         customerContact: "",
-        sellerId: "",          // <-- Seller ID
+        sellerId: "",
         productName: "",
         productId: "",
         sellQuantity: 0,
@@ -198,7 +213,7 @@ export default function SalesOrderTable() {
     const product = productDB.find((p) => p.productId === row.productId);
 
     if (!row.isConfirmed) {
-      if (!row.productId || !row.customerName || !row.customerContact || row.sellQuantity <= 0) {
+      if (!row.productId || !row.customerName || !row.customerContact || !row.sellerId || row.sellQuantity <= 0) {
         alert("Please fill all required fields and sell quantity before confirming!");
         return;
       }
@@ -230,7 +245,7 @@ export default function SalesOrderTable() {
       orderId: "",
       customerName: "",
       customerContact: "",
-      sellerId: "",          // <-- Reset Seller ID
+      sellerId: "",
       productName: "",
       productId: "",
       sellQuantity: 0,
@@ -258,7 +273,7 @@ export default function SalesOrderTable() {
               "Order ID",
               "Customer Name",
               "Customer Contact",
-              "Seller ID",          // <-- Added Seller ID column
+              "Seller ID",
               "Product Name",
               "Product ID",
               "Sell Quantity",
@@ -291,7 +306,7 @@ export default function SalesOrderTable() {
                 { field: "orderId", readonly: true },
                 { field: "customerName" },
                 { field: "customerContact" },
-                { field: "sellerId" },   // <-- Seller ID input
+                { field: "sellerId", type: "select" }, // <-- dropdown
                 { field: "productName", readonly: true },
                 { field: "productId" },
                 { field: "sellQuantity", type: "number" },
@@ -304,6 +319,19 @@ export default function SalesOrderTable() {
                 <td key={field} style={{ border: "1px solid #000", padding: "6px" }}>
                   {readonly || row.isConfirmed ? (
                     row[field]
+                  ) : type === "select" ? (
+                    <select
+                      value={row[field]}
+                      onChange={(e) => handleChange(i, field, e.target.value)}
+                      style={{ width: "100%", fontSize: "12px" }}
+                    >
+                      <option value="">Select Seller</option>
+                      {sellerDB.map((s) => (
+                        <option key={s.sellerId} value={s.sellerId}>
+                          {s.sellerId} - {s.sellerName}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <input
                       type={type || "text"}
