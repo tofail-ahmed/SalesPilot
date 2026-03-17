@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table as MuiTable,
   TableBody,
@@ -6,191 +6,222 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableFooter,
   Paper,
   Button,
   TextField,
-  Select,
-  MenuItem,
   Typography,
-  TableFooter,
+  Box,
 } from "@mui/material";
-import { v4 as uuidv4 } from "uuid";
-
-const STORAGE_KEY = "salespilot_data";
 
 const Table = () => {
-  const createEmptyRow = () => ({
-    id: uuidv4(),
-    orderId: "",
-    customer: "",
-    product: "",
-    quantity: "",
-    price: "",
-    total: 0,
-    status: "Pending",
-  });
+  const [rows, setRows] = useState([
+    {
+      orderId: "",
+      customerName: "",
+      customerContact: "",
+      productName: "",
+      productId: "",
+      sellerId: "",
+      sellQuantity: 0,
+      remainedQuantity: 100,
+      pricePerUnit: 0,
+      totalPrice: 0,
+      orderDateTime: "",
+      deliverDateTime: "",
+      isConfirmed: false, // new flag
+    },
+  ]);
 
-  const [rows, setRows] = useState([]);
-
-  const columns = [
-    { id: "orderId", label: "Order ID" },
-    { id: "customer", label: "Customer" },
-    { id: "product", label: "Product" },
-    { id: "quantity", label: "Quantity" },
-    { id: "price", label: "Price" },
-    { id: "total", label: "Total" },
-    { id: "status", label: "Status" },
-  ];
-
-  // 🔥 Load from localStorage
   useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      setRows(parsed.length ? parsed : [createEmptyRow()]);
-    } else {
-      setRows([createEmptyRow()]); // always 1 row
-    }
+    const storedRows = JSON.parse(localStorage.getItem("salesRows"));
+    if (storedRows) setRows(storedRows);
   }, []);
 
-  // 🔥 Save to localStorage
   useEffect(() => {
-    if (rows.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-    }
+    localStorage.setItem("salesRows", JSON.stringify(rows));
   }, [rows]);
 
-  const handleAddRow = () => {
-    setRows([...rows, createEmptyRow()]);
-  };
+  const handleChange = (index, field, value) => {
+    const updatedRows = [...rows];
+    updatedRows[index][field] = value;
 
-  const handleChange = (id, field, value) => {
-    const updatedRows = rows.map((row) => {
-      if (row.id === id) {
-        const updatedRow = { ...row, [field]: value };
-
-        const qty = Number(updatedRow.quantity) || 0;
-        const price = Number(updatedRow.price) || 0;
-        updatedRow.total = qty * price;
-
-        return updatedRow;
-      }
-      return row;
-    });
+    // auto update totalPrice
+    if (field === "sellQuantity" || field === "pricePerUnit") {
+      const qty = Number(updatedRows[index].sellQuantity || 0);
+      const price = Number(updatedRows[index].pricePerUnit || 0);
+      updatedRows[index].totalPrice = qty * price;
+    }
 
     setRows(updatedRows);
   };
 
-  const handleDelete = (id) => {
-    let filtered = rows.filter((row) => row.id !== id);
-
-    // ❗ always keep at least 1 row
-    if (filtered.length === 0) {
-      filtered = [createEmptyRow()];
-    }
-
-    setRows(filtered);
+  const addRow = () => {
+    setRows([
+      ...rows,
+      {
+        orderId: "",
+        customerName: "",
+        customerContact: "",
+        productName: "",
+        productId: "",
+        sellerId: "",
+        sellQuantity: 0,
+        remainedQuantity: 100,
+        pricePerUnit: 0,
+        totalPrice: 0,
+        orderDateTime: "",
+        deliverDateTime: "",
+        isConfirmed: false,
+      },
+    ]);
   };
 
-  return (
-    <div>
-      <Button
-        variant="contained"
-        onClick={handleAddRow}
-        style={{ marginBottom: "10px" }}
+  const deleteRow = (index) => {
+    if (rows.length === 1) return;
+    const updatedRows = [...rows];
+    updatedRows.splice(index, 1);
+    setRows(updatedRows);
+  };
+
+  const toggleConfirmOrder = (index) => {
+    const updatedRows = [...rows];
+    const row = updatedRows[index];
+    const sellQty = Number(row.sellQuantity || 0);
+    const remainQty = Number(row.remainedQuantity || 0);
+
+    if (!row.isConfirmed) {
+      // Confirm order
+      if (sellQty > remainQty) {
+        alert("Sell quantity exceeds remaining stock!");
+        return;
+      }
+      row.remainedQuantity = remainQty - sellQty;
+      row.isConfirmed = true;
+    } else {
+      // Cancel order
+      row.remainedQuantity = remainQty + sellQty;
+      row.isConfirmed = false;
+    }
+
+    setRows(updatedRows);
+  };
+
+  const renderCell = (row, index, field, type = "text") => (
+    <TableCell>
+      <Box
+        sx={{
+          border: "1px solid #ccc",
+          borderRadius: 1,
+          p: 0.5,
+        }}
       >
+        <TextField
+          type={type}
+          value={row[field]}
+          onChange={(e) => handleChange(index, field, e.target.value)}
+          variant="standard"
+          fullWidth
+          InputProps={{ disableUnderline: true }}
+        />
+      </Box>
+    </TableCell>
+  );
+
+  return (
+    <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+      <MuiTable stickyHeader>
+        <TableHead>
+          <TableRow>
+            <TableCell>Order ID</TableCell>
+            <TableCell>Customer Name</TableCell>
+            <TableCell>Customer Contact</TableCell>
+            <TableCell>Product Name</TableCell>
+            <TableCell>Product ID</TableCell>
+            <TableCell>Seller ID</TableCell>
+            <TableCell>Sell Quantity</TableCell>
+            <TableCell>Remained Quantity</TableCell>
+            <TableCell>Price/Unit</TableCell>
+            <TableCell>Total Price</TableCell>
+            <TableCell>Order Date & Time</TableCell>
+            <TableCell>Delivery Date & Time</TableCell>
+            <TableCell>Action</TableCell>
+          </TableRow>
+        </TableHead>
+
+        <TableBody>
+          {rows.map((row, index) => (
+            <TableRow key={index}>
+              {renderCell(row, index, "orderId")}
+              {renderCell(row, index, "customerName")}
+              {renderCell(row, index, "customerContact")}
+              {renderCell(row, index, "productName")}
+              {renderCell(row, index, "productId")}
+              {renderCell(row, index, "sellerId")}
+              {renderCell(row, index, "sellQuantity", "number")}
+              {renderCell(row, index, "remainedQuantity", "number")}
+              {renderCell(row, index, "pricePerUnit", "number")}
+              <TableCell>
+                <Box sx={{ border: "1px solid #ccc", borderRadius: 1, p: 0.5 }}>
+                  <Typography>{row.totalPrice}</Typography>
+                </Box>
+              </TableCell>
+              {renderCell(row, index, "orderDateTime", "datetime-local")}
+              {renderCell(row, index, "deliverDateTime", "datetime-local")}
+              <TableCell>
+                <Button
+                  color={row.isConfirmed ? "warning" : "success"}
+                  onClick={() => toggleConfirmOrder(index)}
+                  sx={{ mr: 1 }}
+                >
+                  {row.isConfirmed ? "Cancel Order" : "Confirm Order"}
+                </Button>
+                <Button color="error" onClick={() => deleteRow(index)}>
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={6} align="right">
+              <Typography fontWeight="bold">Grand Total Quantity:</Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontWeight="bold">
+                {rows.reduce(
+                  (sum, row) => sum + Number(row.sellQuantity || 0),
+                  0
+                )}
+              </Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontWeight="bold">
+                {rows.reduce(
+                  (sum, row) => sum + Number(row.remainedQuantity || 0),
+                  0
+                )}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography fontWeight="bold">Grand Total Price:</Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontWeight="bold">
+                {rows.reduce((sum, row) => sum + Number(row.totalPrice || 0), 0)}
+              </Typography>
+            </TableCell>
+            <TableCell colSpan={5} />
+          </TableRow>
+        </TableFooter>
+      </MuiTable>
+
+      <Button variant="contained" onClick={addRow} sx={{ m: 2 }}>
         Add Row
       </Button>
-
-      <TableContainer component={Paper}>
-        <MuiTable>
-          <TableHead>
-            <TableRow>
-              {columns.map((col) => (
-                <TableCell key={col.id}>{col.label}</TableCell>
-              ))}
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                {columns.map((col) => (
-                  <TableCell key={col.id}>
-                    {col.id === "status" ? (
-                      <Select
-                        value={row.status}
-                        onChange={(e) =>
-                          handleChange(row.id, "status", e.target.value)
-                        }
-                        size="small"
-                        fullWidth
-                      >
-                        <MenuItem value="Pending">Pending</MenuItem>
-                        <MenuItem value="Shipped">Shipped</MenuItem>
-                        <MenuItem value="Delivered">Delivered</MenuItem>
-                      </Select>
-                    ) : col.id === "total" ? (
-                      <strong>{row.total}</strong>
-                    ) : (
-                      <TextField
-                        value={row[col.id]}
-                        onChange={(e) =>
-                          handleChange(row.id, col.id, e.target.value)
-                        }
-                        size="small"
-                        type={
-                          col.id === "quantity" || col.id === "price"
-                            ? "number"
-                            : "text"
-                        }
-                      />
-                    )}
-                  </TableCell>
-                ))}
-
-                <TableCell>
-                  <Button
-                    color="error"
-                    onClick={() => handleDelete(row.id)}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-  <TableRow>
-    <TableCell colSpan={3} align="right">
-      <Typography fontWeight="bold">Grand Total Quantity:</Typography>
-    </TableCell>
-    <TableCell>
-      <Typography fontWeight="bold">
-        {rows.reduce(
-          (sum, row) => sum + Number(row.quantity || 0),
-          0
-        )}
-      </Typography>
-    </TableCell>
-
-    <TableCell colSpan={1} align="right">
-      <Typography fontWeight="bold">Grand Total Price:</Typography>
-    </TableCell>
-    <TableCell>
-      <Typography fontWeight="bold">
-        {rows.reduce((sum, row) => sum + Number(row.total || 0), 0)}
-      </Typography>
-    </TableCell>
-
-    <TableCell /> {/* empty cell for Actions column */}
-  </TableRow>
-</TableFooter>
-        </MuiTable>
-      </TableContainer>
-    </div>
+    </TableContainer>
   );
 };
 
