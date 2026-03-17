@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
-// Main product database
-const productDB = [
+// Sample product database
+const initialProducts = [
   { productId: "P001", productName: "Apple iPhone 15", pricePerUnit: 1200, remainedQuantity: 50 },
   { productId: "P002", productName: "Samsung Galaxy S23", pricePerUnit: 1100, remainedQuantity: 40 },
   { productId: "P003", productName: "Dell XPS 13 Laptop", pricePerUnit: 1500, remainedQuantity: 20 },
@@ -104,312 +104,120 @@ const productDB = [
   { productId: "P100", productName: "Ring Video Doorbell 4", pricePerUnit: 200, remainedQuantity: 25 },
 ];
 
-// Seller database
-const sellerDB = [
-  { sellerId: "S001", sellerName: "John Doe" },
-  { sellerId: "S002", sellerName: "Jane Smith" },
-  { sellerId: "S003", sellerName: "Alice Johnson" },
-  { sellerId: "S004", sellerName: "Bob Williams" },
-  { sellerId: "S005", sellerName: "Michael Brown" },
-  { sellerId: "S006", sellerName: "Emily Davis" },
-  { sellerId: "S007", sellerName: "David Wilson" },
-  { sellerId: "S008", sellerName: "Sophia Martinez" },
-  { sellerId: "S009", sellerName: "James Anderson" },
-  { sellerId: "S010", sellerName: "Olivia Thomas" },
-];
-
-export default function SalesOrderTable() {
-  const [rows, setRows] = useState(() => {
-    const storedRows = JSON.parse(localStorage.getItem("salesRows"));
-    return storedRows && storedRows.length > 0
-      ? storedRows
-      : [
-          {
-            orderId: "",
-            customerName: "",
-            customerContact: "",
-            sellerId: "",
-            productName: "",
-            productId: "",
-            sellQuantity: 0,
-            remainedQuantity: 0,
-            pricePerUnit: 0,
-            totalPrice: 0,
-            orderDateTime: "",
-            isConfirmed: false,
-          },
-        ];
+export default function SellerProductPage() {
+  const [products, setProducts] = useState(() => {
+    // Load from localStorage if exists
+    const saved = localStorage.getItem("products");
+    return saved ? JSON.parse(saved) : initialProducts;
   });
 
+  // Save to localStorage on every change
   useEffect(() => {
-    localStorage.setItem("salesRows", JSON.stringify(rows));
-  }, [rows]);
+    localStorage.setItem("products", JSON.stringify(products));
+  }, [products]);
 
-  const addRow = () => {
-    setRows([
-      ...rows,
-      {
-        orderId: "",
-        customerName: "",
-        customerContact: "",
-        sellerId: "",
-        productName: "",
-        productId: "",
-        sellQuantity: 0,
-        remainedQuantity: 0,
-        pricePerUnit: 0,
-        totalPrice: 0,
-        orderDateTime: "",
-        isConfirmed: false,
-      },
-    ]);
-  };
-
+  // Handle input changes
   const handleChange = (index, field, value) => {
-    const updatedRows = [...rows];
-    const row = updatedRows[index];
-
-    if (row.isConfirmed) return;
-
-    row[field] = value;
-
-    // Update product info automatically
-    if (field === "productId") {
-      const product = productDB.find((p) => p.productId === value);
-      if (product) {
-        row.productName = product.productName;
-        row.pricePerUnit = product.pricePerUnit;
-        row.remainedQuantity = product.remainedQuantity;
-      } else {
-        row.productName = "";
-        row.pricePerUnit = 0;
-        row.remainedQuantity = 0;
-      }
-    }
-
-    // Restrict sellQuantity to remainedQuantity
-    if (field === "sellQuantity") {
-      row.sellQuantity = Math.min(Number(value), row.remainedQuantity);
-    }
-
-    // Update seller name automatically
-    if (field === "sellerId") {
-      const seller = sellerDB.find((s) => s.sellerId === value);
-      row.sellerName = seller ? seller.sellerName : "";
-    }
-
-    row.totalPrice = row.sellQuantity * row.pricePerUnit;
-
-    setRows(updatedRows);
+    const updated = [...products];
+    updated[index][field] =
+      field === "pricePerUnit" || field === "remainedQuantity" ? Number(value) : value;
+    setProducts(updated);
   };
 
-  const generateOrderId = (row) => {
-    const prodName = row.productName ? row.productName.slice(0, 3).toUpperCase() : "XXX";
-    const prodId = row.productId || "000";
-    const price = row.pricePerUnit || 0;
-    const custName = row.customerName ? row.customerName.slice(0, 2).toUpperCase() : "XX";
-    const custContact = row.customerContact ? row.customerContact.slice(-4) : "0000";
-    const timestamp = Date.now().toString().slice(-3);
-    return `${prodName}-${prodId}-${price}-${custName}-${custContact}-${timestamp}`;
+  // Save single product (here just alert for demo)
+  const saveProduct = (index) => {
+    alert(`Product ${products[index].productId} saved!`);
+    // In a real app, you would call a backend API here
   };
 
-  const toggleConfirm = (index) => {
-    const updatedRows = [...rows];
-    const row = updatedRows[index];
-    const product = productDB.find((p) => p.productId === row.productId);
-
-    if (!row.isConfirmed) {
-      if (!row.productId || !row.customerName || !row.customerContact || !row.sellerId || row.sellQuantity <= 0) {
-        alert("Please fill all required fields and sell quantity before confirming!");
-        return;
-      }
-
-      if (product && row.sellQuantity <= product.remainedQuantity) {
-        product.remainedQuantity -= row.sellQuantity;
-        row.remainedQuantity = product.remainedQuantity;
-        row.isConfirmed = true;
-        row.orderId = generateOrderId(row);
-      } else {
-        alert("Sell quantity exceeds available quantity!");
-        return;
-      }
-    } else {
-      if (product) {
-        product.remainedQuantity += row.sellQuantity;
-        row.remainedQuantity = product.remainedQuantity;
-        row.isConfirmed = false;
-        row.orderId = "";
-      }
-    }
-
-    setRows(updatedRows);
-  };
-
-  const clearRow = (index) => {
-    const updatedRows = [...rows];
-    updatedRows[index] = {
-      orderId: "",
-      customerName: "",
-      customerContact: "",
-      sellerId: "",
-      productName: "",
-      productId: "",
-      sellQuantity: 0,
-      remainedQuantity: 0,
-      pricePerUnit: 0,
-      totalPrice: 0,
-      orderDateTime: "",
-      isConfirmed: false,
-    };
-    setRows(updatedRows);
-  };
-
-  const deleteRow = (index) => {
-    const row = rows[index];
-    const allEmpty = Object.keys(row).every(
-      (key) => row[key] === "" || row[key] === 0 || key === "isConfirmed"
+  // Delete product row
+  const deleteProduct = (index) => {
+    const empty = Object.values(products[index]).every(
+      (val) => val === "" || val === 0
     );
-    if (allEmpty) {
-      const updatedRows = rows.filter((_, i) => i !== index);
-      setRows(updatedRows);
-    } else {
-      alert("Cannot delete row: some cells have input!");
+    if (!empty) {
+      alert("Cannot delete row with data! Clear first.");
+      return;
     }
+    const updated = [...products];
+    updated.splice(index, 1);
+    setProducts(updated);
   };
 
-  const grandTotalPrice = rows.reduce((acc, r) => acc + r.totalPrice, 0);
-  const grandTotalQty = rows.reduce((acc, r) => acc + Number(r.sellQuantity), 0);
-const isRowEmpty = (row) => {
-  return Object.keys(row).every(
-    (key) => row[key] === "" || row[key] === 0 || key === "isConfirmed"
-  );
-};
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Sales & Order Management</h2>
+      <h2>Seller Product Management</h2>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {[
-              "Order ID",
-              "Customer Name",
-              "Customer Contact",
-              "Seller ID",
-              "Product Name",
-              "Product ID",
-              "Sell Quantity",
-              "Remained Quantity",
-              "Price/Unit",
-              "Total Price",
-              "Order DateTime",
-              "Action",
-              "Clear",
-              "Delete Row",
-            ].map((h) => (
-              <th
-                key={h}
-                style={{
-                  border: "1px solid #000",
-                  padding: "6px",
-                  fontSize: "12px",
-                  minWidth: "100px",
-                }}
-              >
-                {h}
-              </th>
-            ))}
+            {["Product ID", "Product Name", "Price Per Unit", "Remained Quantity", "Action", "Delete"].map(
+              (h) => (
+                <th
+                  key={h}
+                  style={{ border: "1px solid #000", padding: "6px", minWidth: "120px" }}
+                >
+                  {h}
+                </th>
+              )
+            )}
           </tr>
         </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              {[
-                { field: "orderId", readonly: true },
-                { field: "customerName" },
-                { field: "customerContact" },
-                { field: "sellerId", type: "select" },
-                { field: "productName", readonly: true },
-                { field: "productId" },
-                { field: "sellQuantity", type: "number" },
-                { field: "remainedQuantity", type: "number", readonly: true },
-                { field: "pricePerUnit", readonly: true },
-                { field: "totalPrice", readonly: true },
-                { field: "orderDateTime", type: "datetime-local" },
-              ].map(({ field, readonly, type }) => (
-                <td key={field} style={{ border: "1px solid #000", padding: "6px" }}>
-                  {readonly || row.isConfirmed ? (
-                    row[field]
-                  ) : type === "select" ? (
-                    <select
-                      value={row[field]}
-                      onChange={(e) => handleChange(i, field, e.target.value)}
-                      style={{ width: "100%", fontSize: "12px" }}
-                    >
-                      <option value="">Select Seller</option>
-                      {sellerDB.map((s) => (
-                        <option key={s.sellerId} value={s.sellerId}>
-                          {s.sellerId} - {s.sellerName}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={type || "text"}
-                      value={row[field]}
-                      onChange={(e) => handleChange(i, field, e.target.value)}
-                      style={{ width: "100%", fontSize: "12px" }}
-                      min={field === "sellQuantity" ? 0 : undefined}
-                      max={field === "sellQuantity" ? row.remainedQuantity : undefined}
-                    />
-                  )}
-                </td>
-              ))}
 
+        <tbody>
+          {products.map((prod, i) => (
+            <tr key={prod.productId}>
+              <td style={{ border: "1px solid #000", padding: "6px" }}>{prod.productId}</td>
               <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <button onClick={() => toggleConfirm(i)} style={{ fontSize: "12px" }}>
-                  {row.isConfirmed ? "Cancel Order" : "Confirm Order"}
-                </button>
+                <input
+                  type="text"
+                  value={prod.productName}
+                  onChange={(e) => handleChange(i, "productName", e.target.value)}
+                  style={{ width: "100%" }}
+                />
               </td>
               <td style={{ border: "1px solid #000", padding: "6px" }}>
-                <button onClick={() => clearRow(i)} style={{ fontSize: "12px" }}>
-                  Clear
-                </button>
+                <input
+                  type="number"
+                  value={prod.pricePerUnit}
+                  onChange={(e) => handleChange(i, "pricePerUnit", e.target.value)}
+                  style={{ width: "100%" }}
+                />
               </td>
               <td style={{ border: "1px solid #000", padding: "6px" }}>
-  <button
-    onClick={() => deleteRow(i)}
-    style={{
-      fontSize: "12px",
-      backgroundColor: "red",
-      color: "white",
-      cursor: "pointer",
-      opacity: isRowEmpty(row) ? 1 : 0.5, // greyed out if not empty
-      pointerEvents: isRowEmpty(row) ? "auto" : "none", // disable click
-    }}
-  >
-    Delete Row
-  </button>
-</td>
+                <input
+                  type="number"
+                  value={prod.remainedQuantity}
+                  onChange={(e) => handleChange(i, "remainedQuantity", e.target.value)}
+                  style={{ width: "100%" }}
+                />
+              </td>
+              <td style={{ border: "1px solid #000", padding: "6px" }}>
+                <button onClick={() => saveProduct(i)}>Save</button>
+              </td>
+              <td style={{ border: "1px solid #000", padding: "6px" }}>
+                <button
+                  onClick={() => deleteProduct(i)}
+                  disabled={
+                    !Object.values(prod).every((val) => val === "" || val === 0)
+                  }
+                  style={{
+                    backgroundColor: Object.values(prod).every((val) => val === "" || val === 0)
+                      ? "#f00"
+                      : "#ccc",
+                    color: "#fff",
+                    cursor: Object.values(prod).every((val) => val === "" || val === 0)
+                      ? "pointer"
+                      : "not-allowed",
+                  }}
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
-        <tfoot>
-          <tr>
-            <td colSpan={6} style={{ border: "1px solid #000", padding: "6px", textAlign: "right" }}>
-              Grand Total
-            </td>
-            <td style={{ border: "1px solid #000", padding: "6px" }}>{grandTotalQty}</td>
-            <td colSpan={2} style={{ border: "1px solid #000", padding: "6px" }}></td>
-            <td style={{ border: "1px solid #000", padding: "6px" }}>{grandTotalPrice}</td>
-            <td colSpan={3}></td>
-          </tr>
-        </tfoot>
       </table>
-
-      <button onClick={addRow} style={{ marginTop: "10px" }}>
-        Add Row
-      </button>
     </div>
   );
 }
