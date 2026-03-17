@@ -105,6 +105,9 @@ const initialProducts = [
 ];
 
 
+
+
+
 export default function SellerProductPage() {
   const [products, setProducts] = useState(() => {
     const saved = localStorage.getItem("products");
@@ -113,10 +116,14 @@ export default function SellerProductPage() {
 
   const [editingIndex, setEditingIndex] = useState(null);
 
-  // 🔥 FILTER STATES
+  // FILTER
   const [searchName, setSearchName] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+
+  // SORT
+  const [sortOrder, setSortOrder] = useState("");
+  const [sortField, setSortField] = useState("");
 
   const [newProduct, setNewProduct] = useState({
     productId: "",
@@ -156,7 +163,7 @@ export default function SellerProductPage() {
 
     const exists = products.some(p => p.productId === newProduct.productId);
     if (exists) {
-      alert("Product ID already exists!");
+      alert("Product ID exists!");
       return;
     }
 
@@ -172,7 +179,7 @@ export default function SellerProductPage() {
 
   const editRow = (index) => setEditingIndex(index);
 
-  const updateRow = (index) => {
+  const updateRow = () => {
     setEditingIndex(null);
     alert("Updated!");
   };
@@ -185,31 +192,59 @@ export default function SellerProductPage() {
     }
   };
 
-  // 🔥 FILTER LOGIC
-  const filteredProducts = products.filter((p) => {
-    const nameMatch = p.productName
-      .toLowerCase()
-      .includes(searchName.toLowerCase());
+  // 🔥 COLUMN SORT CLICK
+  const handleColumnSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
 
-    const minMatch = minPrice === "" || p.pricePerUnit >= Number(minPrice);
-    const maxMatch = maxPrice === "" || p.pricePerUnit <= Number(maxPrice);
+  // 🔥 FILTER + SORT
+  const filteredProducts = products
+    .filter((p) => {
+      const nameMatch = p.productName.toLowerCase().includes(searchName.toLowerCase());
+      const minMatch = minPrice === "" || p.pricePerUnit >= Number(minPrice);
+      const maxMatch = maxPrice === "" || p.pricePerUnit <= Number(maxPrice);
+      return nameMatch && minMatch && maxMatch;
+    })
+    .sort((a, b) => {
+      if (sortField) {
+        if (sortOrder === "asc") return a[sortField] > b[sortField] ? 1 : -1;
+        if (sortOrder === "desc") return a[sortField] < b[sortField] ? 1 : -1;
+      }
 
-    return nameMatch && minMatch && maxMatch;
-  });
+      if (sortOrder === "lowToHigh") return a.pricePerUnit - b.pricePerUnit;
+      if (sortOrder === "highToLow") return b.pricePerUnit - a.pricePerUnit;
+
+      return 0;
+    });
+
+  // 🔥 TOTAL VALUES
+  const filteredTotal = filteredProducts.reduce(
+    (sum, p) => sum + p.pricePerUnit * p.remainedQuantity,
+    0
+  );
+
+  const allTotal = products.reduce(
+    (sum, p) => sum + p.pricePerUnit * p.remainedQuantity,
+    0
+  );
 
   return (
     <div style={{ padding: "20px" }}>
       <h2>Seller Product Management</h2>
 
-      {/* 🔥 FILTER SECTION */}
-      <div style={{ marginBottom: "15px", border: "1px solid #ccc", padding: "10px" }}>
-        <h3>Filter Products</h3>
+      {/* FILTER */}
+      <div style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "15px" }}>
+        <h3>Filter</h3>
 
         <input
-          placeholder="Search by Name"
+          placeholder="Search Name"
           value={searchName}
           onChange={(e) => setSearchName(e.target.value)}
-          style={{ marginRight: "10px" }}
         />
 
         <input
@@ -217,7 +252,6 @@ export default function SellerProductPage() {
           placeholder="Min Price"
           value={minPrice}
           onChange={(e) => setMinPrice(e.target.value)}
-          style={{ marginRight: "10px" }}
         />
 
         <input
@@ -226,10 +260,28 @@ export default function SellerProductPage() {
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
         />
+
+        <div style={{ marginTop: "10px" }}>
+          <button onClick={() => setSortOrder("lowToHigh")}>
+            🔽 Low → High
+          </button>
+
+          <button onClick={() => setSortOrder("highToLow")}>
+            🔼 High → Low
+          </button>
+
+          <button onClick={() => { setSortOrder(""); setSortField(""); }}>
+            ❌ Clear Sort
+          </button>
+        </div>
       </div>
 
-      {/* 🔥 ADD PRODUCT */}
-      <div style={{ marginBottom: "20px" }}>
+      {/* TOTAL */}
+      <h3>📊 Filtered Total: ${filteredTotal}</h3>
+      <h3>📊 All Products Total: ${allTotal}</h3>
+
+      {/* ADD */}
+      <div>
         <h3>Add Product</h3>
         <input placeholder="ID" value={newProduct.productId}
           onChange={(e) => handleNewChange("productId", e.target.value)} />
@@ -244,14 +296,14 @@ export default function SellerProductPage() {
         <button onClick={addProduct}>Add</button>
       </div>
 
-      {/* 🔥 TABLE */}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      {/* TABLE */}
+      <table border="1" width="100%" style={{ marginTop: "20px" }}>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Qty</th>
+            <th onClick={() => handleColumnSort("productId")}>ID 🔽</th>
+            <th onClick={() => handleColumnSort("productName")}>Name 🔽</th>
+            <th onClick={() => handleColumnSort("pricePerUnit")}>Price 🔽</th>
+            <th onClick={() => handleColumnSort("remainedQuantity")}>Qty 🔽</th>
             <th>Action</th>
             <th>Delete</th>
           </tr>
@@ -259,31 +311,36 @@ export default function SellerProductPage() {
 
         <tbody>
           {filteredProducts.map((prod, i) => (
-            <tr key={prod.productId}>
+            <tr
+              key={prod.productId}
+              style={{
+                background:
+                  prod.remainedQuantity <= 5 ? "#ffcccc" : "transparent", // 🔥 STOCK ALERT
+              }}
+            >
               <td>
-                <input value={prod.productId}
-                  readOnly={editingIndex !== i}
+                <input value={prod.productId} readOnly={editingIndex !== i}
                   onChange={(e) => handleChange(i, "productId", e.target.value)} />
               </td>
+
               <td>
-                <input value={prod.productName}
-                  readOnly={editingIndex !== i}
+                <input value={prod.productName} readOnly={editingIndex !== i}
                   onChange={(e) => handleChange(i, "productName", e.target.value)} />
               </td>
+
               <td>
-                <input type="number" value={prod.pricePerUnit}
-                  readOnly={editingIndex !== i}
+                <input type="number" value={prod.pricePerUnit} readOnly={editingIndex !== i}
                   onChange={(e) => handleChange(i, "pricePerUnit", e.target.value)} />
               </td>
+
               <td>
-                <input type="number" value={prod.remainedQuantity}
-                  readOnly={editingIndex !== i}
+                <input type="number" value={prod.remainedQuantity} readOnly={editingIndex !== i}
                   onChange={(e) => handleChange(i, "remainedQuantity", e.target.value)} />
               </td>
 
               <td>
                 {editingIndex === i ? (
-                  <button onClick={() => updateRow(i)}>Update</button>
+                  <button onClick={updateRow}>Update</button>
                 ) : (
                   <button onClick={() => editRow(i)}>Edit</button>
                 )}
