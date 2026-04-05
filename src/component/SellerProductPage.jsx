@@ -277,7 +277,7 @@ export default function SellerProductPage() {
       </div>
 
       {/* TOTAL */}
-      <h3>📊 Filtered Total: ${filteredTotal}</h3>
+      {/* <h3>📊 Filtered Total: ${filteredTotal}</h3> */}
       <h3>📊 All Products Total: ${allTotal}</h3>
 
       {/* ADD */}
